@@ -21,7 +21,8 @@ pool:
   name: 'MFG-EdgeAIML_arm64'
 
 variables:
-  - group: jetson-cv-variables
+  # TODO: Create variable group 'jetson-cv-variables' in Azure DevOps Library
+  # - group: jetson-cv-variables
   - name: dockerComposeFile
     value: 'docker/docker-compose.yml'
   - name: dockerComposeProdFile
