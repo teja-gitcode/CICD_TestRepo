@@ -36,11 +36,11 @@ stages:
         displayName: 'Pre-Cleanup Workspace'
         steps:
           - script: |
-              echo "Cleaning workspace Python cache files..."
+              echo "Cleaning workspace Python cache files (owned by root from Docker)..."
               echo "Workspace path: $(Agent.BuildDirectory)"
-              find $(Agent.BuildDirectory) -type d -name "__pycache__" -exec rm -rf {} + 2>/dev/null || true
-              find $(Agent.BuildDirectory) -type f -name "*.pyc" -delete 2>/dev/null || true
-              find $(Agent.BuildDirectory) -type d -name ".pytest_cache" -exec rm -rf {} + 2>/dev/null || true
+              sudo find $(Agent.BuildDirectory) -type d -name "__pycache__" -exec rm -rf {} + 2>/dev/null || true
+              sudo find $(Agent.BuildDirectory) -type f -name "*.pyc" -delete 2>/dev/null || true
+              sudo find $(Agent.BuildDirectory) -type d -name ".pytest_cache" -exec rm -rf {} + 2>/dev/null || true
             displayName: 'Clean Python Cache Before Checkout'
             continueOnError: true
 
