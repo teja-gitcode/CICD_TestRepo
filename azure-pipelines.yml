@@ -36,11 +36,13 @@ stages:
         displayName: 'Pre-Cleanup Workspace'
         steps:
           - script: |
-              echo "Cleaning workspace Python cache files (owned by root from Docker)..."
+              echo "Cleaning workspace Python cache files..."
               echo "Workspace path: $(Agent.BuildDirectory)"
-              sudo find $(Agent.BuildDirectory) -type d -name "__pycache__" -exec rm -rf {} + 2>/dev/null || true
-              sudo find $(Agent.BuildDirectory) -type f -name "*.pyc" -delete 2>/dev/null || true
-              sudo find $(Agent.BuildDirectory) -type d -name ".pytest_cache" -exec rm -rf {} + 2>/dev/null || true
+              echo "Note: PYTHONDONTWRITEBYTECODE=1 prevents new cache files from being created"
+              find $(Agent.BuildDirectory) -type d -name "__pycache__" -exec rm -rf {} + 2>/dev/null || true
+              find $(Agent.BuildDirectory) -type f -name "*.pyc" -delete 2>/dev/null || true
+              find $(Agent.BuildDirectory) -type d -name ".pytest_cache" -exec rm -rf {} + 2>/dev/null || true
+              echo "Cleanup attempt completed (may fail on root-owned files, but PYTHONDONTWRITEBYTECODE prevents new ones)"
             displayName: 'Clean Python Cache Before Checkout'
             continueOnError: true
 
