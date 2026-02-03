@@ -18,7 +18,7 @@ pr:
       - develop
 
 pool:
-  name: 'Jetson-Self-Hosted'
+  name: 'MFG-EdgeAIML_arm64'
 
 variables:
   - group: jetson-cv-variables
