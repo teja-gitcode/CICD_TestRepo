@@ -1,0 +1,10 @@
+# Azure Pipelines Agent files
+_work/
+.agent
+.credentials
+.path
+.runner
+*.tar.gz
+bin/
+externals/
+

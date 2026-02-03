@@ -1,0 +1,69 @@
+# Environment files
+.env
+.env.prod
+config/.env
+config/.env.prod
+
+# Data directories
+data/
+logs/
+*.log
+
+# Azure Pipelines agent
+myagent/_work/
+myagent/.agent
+myagent/.credentials
+myagent/.path
+myagent/.runner
+
+# Docker
+docker/*/node_modules/
+**/node_modules/
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+*.egg-info/
+.pytest_cache/
+*.egg
+.eggs/
+dist/
+build/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+
+# Temporary files
+*.tmp
+*.bak
+*.backup
+
+# Test coverage
+.coverage
+htmlcov/
+.tox/
+
+# Video files
+*.mp4
+*.avi
+*.mov
+
+# Image files (except small test images)
+*.jpg
+*.jpeg
+*.png
+!**/test_*.png
+!**/sample_*.jpg
+
+# Compiled files
+*.so
+*.dylib
+*.dll
+

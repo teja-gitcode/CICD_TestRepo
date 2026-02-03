@@ -1,0 +1,47 @@
+# Git
+.git/
+.gitignore
+.gitattributes
+
+# Documentation
+docs/
+*.md
+!README.md
+
+# CI/CD
+azure-pipelines.yml
+myagent/
+
+# Data
+data/
+logs/
+
+# Development
+.env.dev
+docker-compose.dev.yml
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.pytest_cache/
+*.egg-info/
+.eggs/
+dist/
+build/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Tests
+app/tests/
+
+# Temporary files
+*.tmp
+*.log
+*.bak
+

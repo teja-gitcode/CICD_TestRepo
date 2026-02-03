@@ -1,0 +1,118 @@
+services:
+  nodered:
+    container_name: nodered
+    image: nodered/node-red:latest
+    restart: unless-stopped
+    ports:
+      - "${NODERED_PORT:-1881}:1880"
+    volumes:
+      - nodered-data:/data
+      - ../app:/workspace/app:ro
+    networks:
+      - ${NETWORK_NAME:-cartloading-network}
+    environment:
+      - TZ=${TZ:-America/New_York}
+    healthcheck:
+      test: ["CMD-SHELL", "node /healthcheck.js"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "50m"
+        max-file: "5"
+        compress: "true"
+    deploy:
+      resources:
+        limits:
+          memory: ${NODERED_MEMORY_LIMIT:-512M}
+        reservations:
+          memory: ${NODERED_MEMORY_RESERVATION:-256M}
+
+  opencv:
+    container_name: opencv-gpu
+    build:
+      context: ..
+      dockerfile: docker/opencv-gpu/Dockerfile
+    restart: unless-stopped
+    runtime: nvidia
+    ports:
+      - "${API_PORT:-5001}:5001"
+      - "${STREAM_PORT:-5002}:5002"
+    volumes:
+      - ../app:/workspace/app
+      - ../config:/workspace/config:ro
+      - ../wheels:/workspace/wheels:ro
+    networks:
+      - ${NETWORK_NAME:-cartloading-network}
+    environment:
+      - NVIDIA_VISIBLE_DEVICES=all
+      - NVIDIA_DRIVER_CAPABILITIES=all
+      - TZ=${TZ:-America/New_York}
+      - MQTT_BROKER=${MQTT_BROKER}
+      - MQTT_PORT=${MQTT_PORT:-1883}
+      - API_PORT=${API_PORT:-5001}
+    command: ["python3", "/workspace/app/api/server.py"]
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:5001/health || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "100m"
+        max-file: "5"
+        compress: "true"
+    deploy:
+      resources:
+        limits:
+          memory: ${OPENCV_MEMORY_LIMIT:-24G}
+          cpus: '${OPENCV_CPU_LIMIT:-6}'
+        reservations:
+          memory: ${OPENCV_MEMORY_RESERVATION:-8G}
+          cpus: '${OPENCV_CPU_RESERVATION:-4}'
+          devices:
+            - driver: nvidia
+              count: all
+              capabilities: [gpu]
+
+  portainer:
+    container_name: portainer
+    image: portainer/portainer-ce:latest
+    restart: unless-stopped
+    ports:
+      - "${PORTAINER_PORT:-9001}:9000"
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - portainer-data:/data
+    networks:
+      - ${NETWORK_NAME:-cartloading-network}
+    environment:
+      - TZ=${TZ:-America/New_York}
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "50m"
+        max-file: "3"
+        compress: "true"
+
+networks:
+  cartloading-network:
+    driver: bridge
+    name: ${NETWORK_NAME:-cartloading-network}
+
+volumes:
+  nodered-data:
+    driver: local
+    driver_opts:
+      type: none
+      o: bind
+      device: ${NODERED_DATA_PATH:-/opt/cartloading/nodered/data}
+
+  portainer-data:
+    driver: local
+

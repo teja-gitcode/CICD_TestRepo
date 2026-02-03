@@ -1,0 +1,7 @@
+numpy<2.0
+flask>=3.0.0
+werkzeug>=3.0.0
+paho-mqtt>=1.6.1
+pytest>=7.0.0
+/tmp/pupil_apriltags-1.0.4.post11-cp310-cp310-linux_aarch64.whl
+

@@ -1,0 +1,110 @@
+# Azure DevOps CI/CD Pipeline for Jetson CV Pipeline
+
+trigger:
+  branches:
+    include:
+      - main
+      - develop
+  paths:
+    exclude:
+      - docs/
+      - '*.md'
+      - .gitignore
+
+pr:
+  branches:
+    include:
+      - main
+      - develop
+
+pool:
+  name: 'Jetson-Self-Hosted'
+
+variables:
+  - group: jetson-cv-variables
+  - name: dockerComposeFile
+    value: 'docker/docker-compose.yml'
+  - name: dockerComposeProdFile
+    value: 'docker/docker-compose.prod.yml'
+
+stages:
+  - stage: Build
+    displayName: 'Build Stage'
+    jobs:
+      - job: BuildDockerImages
+        displayName: 'Build Docker Images'
+        steps:
+          - checkout: self
+            clean: true
+
+          - script: |
+              echo "Building Docker images..."
+              ./scripts/build.sh
+            displayName: 'Build Docker Images'
+            workingDirectory: $(Build.SourcesDirectory)
+
+          - script: |
+              docker images | grep jetson-cv
+            displayName: 'List Built Images'
+
+  - stage: Test
+    displayName: 'Test Stage'
+    dependsOn: Build
+    jobs:
+      - job: RunUnitTests
+        displayName: 'Run Unit Tests'
+        steps:
+          - script: |
+              echo "Starting test container..."
+              cd docker
+              docker compose up -d opencv
+              sleep 10
+            displayName: 'Start Test Container'
+
+          - script: |
+              echo "Running unit tests..."
+              docker exec opencv-gpu pytest /workspace/app/tests/ -v --tb=short
+            displayName: 'Run Unit Tests'
+
+          - script: |
+              echo "Running health check..."
+              ./scripts/health_check.sh
+            displayName: 'Health Check'
+
+          - script: |
+              echo "Stopping test container..."
+              cd docker
+              docker compose down
+            displayName: 'Cleanup Test Container'
+            condition: always()
+
+  - stage: Deploy
+    displayName: 'Deploy Stage'
+    dependsOn: Test
+    condition: and(succeeded(), eq(variables['Build.SourceBranch'], 'refs/heads/main'))
+    jobs:
+      - deployment: DeployToProduction
+        displayName: 'Deploy to Production'
+        environment: 'jetson-production'
+        strategy:
+          runOnce:
+            deploy:
+              steps:
+                - checkout: self
+
+                - script: |
+                    echo "Deploying to production..."
+                    ./scripts/deploy.sh
+                  displayName: 'Deploy Containers'
+
+                - script: |
+                    echo "Verifying deployment..."
+                    sleep 15
+                    ./scripts/health_check.sh
+                  displayName: 'Verify Deployment'
+
+                - script: |
+                    echo "Cleaning up old images..."
+                    ./scripts/cleanup.sh
+                  displayName: 'Cleanup Old Resources'
+

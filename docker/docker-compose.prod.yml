@@ -1,0 +1,19 @@
+# Production overrides for docker-compose.yml
+# Usage: docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d
+
+services:
+  opencv:
+    volumes:
+      # Override to make app directory read-only in production
+      - ../app:/workspace/app:ro
+    environment:
+      - APP_ENV=production
+      - LOG_LEVEL=INFO
+    # Remove build, use pre-built image in production
+    image: jetson-cv-opencv:latest
+    build: null
+
+  nodered:
+    environment:
+      - NODE_ENV=production
+
