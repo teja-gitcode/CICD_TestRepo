@@ -32,21 +32,25 @@ stages:
   - stage: Build
     displayName: 'Build Stage'
     jobs:
+      - job: PreCleanup
+        displayName: 'Pre-Cleanup Workspace'
+        steps:
+          - script: |
+              echo "Cleaning workspace Python cache files..."
+              echo "Workspace path: $(Agent.BuildDirectory)"
+              find $(Agent.BuildDirectory) -type d -name "__pycache__" -exec rm -rf {} + 2>/dev/null || true
+              find $(Agent.BuildDirectory) -type f -name "*.pyc" -delete 2>/dev/null || true
+              find $(Agent.BuildDirectory) -type d -name ".pytest_cache" -exec rm -rf {} + 2>/dev/null || true
+            displayName: 'Clean Python Cache Before Checkout'
+            continueOnError: true
+
       - job: BuildDockerImages
         displayName: 'Build Docker Images'
+        dependsOn: PreCleanup
         steps:
           - checkout: self
             clean: false
             fetchDepth: 1
-
-          - script: |
-              echo "Cleaning Python cache files..."
-              find . -type d -name "__pycache__" -exec rm -rf {} + 2>/dev/null || true
-              find . -type f -name "*.pyc" -delete 2>/dev/null || true
-              find . -type d -name ".pytest_cache" -exec rm -rf {} + 2>/dev/null || true
-            displayName: 'Clean Python Cache'
-            workingDirectory: $(Build.SourcesDirectory)
-            continueOnError: true
 
           - script: |
               echo "Building Docker images..."
