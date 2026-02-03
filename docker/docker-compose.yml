@@ -33,7 +33,7 @@ services:
 
   opencv:
     container_name: opencv-gpu
-    image: jetson-cv-opencv:latest
+    image: jetson-cuda-opencv:latest
     build:
       context: ..
       dockerfile: docker/opencv-gpu/Dockerfile
