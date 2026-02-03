@@ -26,7 +26,7 @@ if [ "$response" -eq 200 ]; then
     # Get detailed health info
     echo ""
     echo "Health details:"
-    curl -s ${API_URL}/health | python3 -m json.tool || echo "Could not parse JSON response"
+    curl -s ${API_URL}/health | python3 -m json.tool 2>/dev/null || echo "Could not parse JSON response"
     
     exit 0
 else

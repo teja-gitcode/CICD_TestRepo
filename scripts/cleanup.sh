@@ -11,7 +11,7 @@ echo ""
 # Function to display size
 display_disk_usage() {
     echo "Current disk usage:"
-    df -h | grep -E "Filesystem|/$"
+    df -h | grep -E "Filesystem|/$" || true
     echo ""
 }
 

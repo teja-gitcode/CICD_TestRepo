@@ -29,5 +29,5 @@ echo ""
 
 # Display built images
 echo "Built images:"
-docker images | grep -E "REPOSITORY|jetson-cv"
+docker images | grep -E "REPOSITORY|jetson-cv" || true
 
