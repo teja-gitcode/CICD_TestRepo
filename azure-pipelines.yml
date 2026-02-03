@@ -36,7 +36,17 @@ stages:
         displayName: 'Build Docker Images'
         steps:
           - checkout: self
-            clean: true
+            clean: false
+            fetchDepth: 1
+
+          - script: |
+              echo "Cleaning Python cache files..."
+              find . -type d -name "__pycache__" -exec rm -rf {} + 2>/dev/null || true
+              find . -type f -name "*.pyc" -delete 2>/dev/null || true
+              find . -type d -name ".pytest_cache" -exec rm -rf {} + 2>/dev/null || true
+            displayName: 'Clean Python Cache'
+            workingDirectory: $(Build.SourcesDirectory)
+            continueOnError: true
 
           - script: |
               echo "Building Docker images..."
@@ -55,6 +65,18 @@ stages:
       - job: RunUnitTests
         displayName: 'Run Unit Tests'
         steps:
+          - checkout: self
+            clean: false
+            fetchDepth: 1
+
+          - script: |
+              echo "Cleaning Python cache files..."
+              find . -type d -name "__pycache__" -exec rm -rf {} + 2>/dev/null || true
+              find . -type f -name "*.pyc" -delete 2>/dev/null || true
+              find . -type d -name ".pytest_cache" -exec rm -rf {} + 2>/dev/null || true
+            displayName: 'Clean Python Cache'
+            continueOnError: true
+
           - script: |
               echo "Starting test container..."
               cd docker
@@ -92,6 +114,16 @@ stages:
             deploy:
               steps:
                 - checkout: self
+                  clean: false
+                  fetchDepth: 1
+
+                - script: |
+                    echo "Cleaning Python cache files..."
+                    find . -type d -name "__pycache__" -exec rm -rf {} + 2>/dev/null || true
+                    find . -type f -name "*.pyc" -delete 2>/dev/null || true
+                    find . -type d -name ".pytest_cache" -exec rm -rf {} + 2>/dev/null || true
+                  displayName: 'Clean Python Cache'
+                  continueOnError: true
 
                 - script: |
                     echo "Deploying to production..."
