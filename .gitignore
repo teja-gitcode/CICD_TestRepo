@@ -9,12 +9,10 @@ data/
 logs/
 *.log
 
-# Azure Pipelines agent
-myagent/_work/
-myagent/.agent
-myagent/.credentials
-myagent/.path
-myagent/.runner
+# Azure Pipelines agent - ignore entire folder except README
+myagent/*
+!myagent/.gitignore
+!myagent/README.md
 
 # Docker
 docker/*/node_modules/
