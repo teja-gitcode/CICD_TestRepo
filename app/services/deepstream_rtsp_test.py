@@ -186,26 +186,25 @@ class DeepStreamRTSP:
         # Create pipeline elements
         self.pipeline = Gst.Pipeline.new("deepstream-rtsp-pipeline")
 
-        # RTSP source
-        source = Gst.ElementFactory.make("rtspsrc", "rtsp-source")
-        source.set_property("location", self.rtsp_url)
-        source.set_property("latency", 200)
-        source.set_property("protocols", "tcp")  # Use TCP for reliability
-        source.set_property("retry", 5)
-        source.set_property("timeout", 5000000)  # 5 seconds in microseconds
+        # Use uridecodebin for automatic RTSP handling, RTP depayloading, and decoding
+        # This handles fragmented NAL units (FU-A) better than manual rtspsrc + decodebin
+        uridecodebin = Gst.ElementFactory.make("uridecodebin", "uri-decoder")
+        uridecodebin.set_property("uri", self.rtsp_url)
 
-        # RTP H264 depayloader
-        depay = Gst.ElementFactory.make("rtph264depay", "depay")
+        # Configure RTSP source properties through uridecodebin
+        def configure_source(element, source):
+            if source.get_factory().get_name() == "rtspsrc":
+                source.set_property("latency", 200)
+                source.set_property("protocols", 4)  # TCP = 4
+                source.set_property("retry", 5)
+                source.set_property("timeout", 5000000)
+                source.set_property("tls-validation-flags", 0)  # Disable TLS validation
+                logger.info("Configured rtspsrc with TLS validation disabled")
 
-        # H264 parser
-        h264parse = Gst.ElementFactory.make("h264parse", "h264-parser")
+        uridecodebin.connect("source-setup", configure_source)
 
-        # NVIDIA hardware decoder (nvdec)
-        decoder = Gst.ElementFactory.make("nvv4l2decoder", "nvdec-decoder")
-        decoder.set_property("enable-max-performance", True)
-
-        # NVIDIA video converter
-        converter = Gst.ElementFactory.make("nvvideoconvert", "nvvideo-converter")
+        # NVIDIA video converter (nvvidconv is the correct element name on Jetson)
+        converter = Gst.ElementFactory.make("nvvidconv", "nvvideo-converter")
 
         # Caps filter for output format
         caps_filter = Gst.ElementFactory.make("capsfilter", "caps-filter")
@@ -213,7 +212,7 @@ class DeepStreamRTSP:
         caps_filter.set_property("caps", caps)
 
         # Convert from NVMM to system memory
-        nvmm_converter = Gst.ElementFactory.make("nvvideoconvert", "nvmm-converter")
+        nvmm_converter = Gst.ElementFactory.make("nvvidconv", "nvmm-converter")
 
         # Caps for system memory
         sys_caps_filter = Gst.ElementFactory.make("capsfilter", "sys-caps-filter")
@@ -229,23 +228,37 @@ class DeepStreamRTSP:
         appsink.connect("new-sample", self.on_new_sample)
 
         # Add elements to pipeline
-        elements = [source, depay, h264parse, decoder, converter, caps_filter,
-                   nvmm_converter, sys_caps_filter, appsink]
+        elements = [
+            ("uridecodebin", uridecodebin),
+            ("nvvidconv", converter),
+            ("capsfilter", caps_filter),
+            ("nvvidconv-nvmm", nvmm_converter),
+            ("capsfilter-sys", sys_caps_filter),
+            ("appsink", appsink)
+        ]
 
-        for element in elements:
+        for name, element in elements:
             if not element:
-                logger.error(f"Failed to create element")
+                logger.error(f"Failed to create element: {name}")
                 return False
             self.pipeline.add(element)
 
-        # Link static elements (rtspsrc pads are dynamic, linked in pad-added callback)
-        if not Gst.Element.link_many(depay, h264parse, decoder, converter, caps_filter,
-                                      nvmm_converter, sys_caps_filter, appsink):
-            logger.error("Failed to link pipeline elements")
+        # Link static elements (uridecodebin has dynamic pads)
+        if not converter.link(caps_filter):
+            logger.error("Failed to link converter to caps_filter")
+            return False
+        if not caps_filter.link(nvmm_converter):
+            logger.error("Failed to link caps_filter to nvmm_converter")
+            return False
+        if not nvmm_converter.link(sys_caps_filter):
+            logger.error("Failed to link nvmm_converter to sys_caps_filter")
+            return False
+        if not sys_caps_filter.link(appsink):
+            logger.error("Failed to link sys_caps_filter to appsink")
             return False
 
-        # Connect pad-added signal for dynamic pads from rtspsrc
-        source.connect("pad-added", self.on_pad_added, depay)
+        # Connect pad-added signal for dynamic pads from uridecodebin
+        uridecodebin.connect("pad-added", self.on_uridecodebin_pad_added, converter)
 
         # Setup bus
         bus = self.pipeline.get_bus()
@@ -255,27 +268,28 @@ class DeepStreamRTSP:
         logger.info("Pipeline built successfully")
         return True
 
-    def on_pad_added(self, src, new_pad, sink_element):
-        """Handle dynamic pad from rtspsrc"""
-        logger.info(f"Pad added: {new_pad.get_name()}")
+    def on_uridecodebin_pad_added(self, src, new_pad, sink_element):
+        """Handle dynamic pad from uridecodebin"""
+        logger.info(f"Uridecodebin pad added: {new_pad.get_name()}")
 
         sink_pad = sink_element.get_static_pad("sink")
         if sink_pad.is_linked():
-            logger.info("Sink pad already linked")
+            logger.info("Converter sink pad already linked")
             return
 
         new_pad_caps = new_pad.get_current_caps()
-        new_pad_struct = new_pad_caps.get_structure(0)
-        new_pad_type = new_pad_struct.get_name()
+        if new_pad_caps:
+            new_pad_struct = new_pad_caps.get_structure(0)
+            new_pad_type = new_pad_struct.get_name()
+            logger.info(f"Uridecodebin pad type: {new_pad_type}")
 
-        logger.info(f"Pad type: {new_pad_type}")
-
-        if new_pad_type.startswith("application/x-rtp"):
-            ret = new_pad.link(sink_pad)
-            if ret == Gst.PadLinkReturn.OK:
-                logger.info("Successfully linked rtspsrc to depayloader")
-            else:
-                logger.error(f"Failed to link pads: {ret}")
+            # Link only video pads, ignore audio
+            if new_pad_type.startswith("video/"):
+                ret = new_pad.link(sink_pad)
+                if ret == Gst.PadLinkReturn.OK:
+                    logger.info("Successfully linked uridecodebin to converter")
+                else:
+                    logger.error(f"Failed to link uridecodebin pads: {ret}")
 
     def start(self):
         """Start the pipeline"""
