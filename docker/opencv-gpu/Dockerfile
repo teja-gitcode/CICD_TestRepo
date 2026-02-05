@@ -3,6 +3,17 @@ FROM dustynv/l4t-pytorch:r36.4.0
 # Set working directory
 WORKDIR /workspace
 
+# Install system dependencies for GStreamer Python bindings
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    python3-gi \
+    python3-gst-1.0 \
+    gstreamer1.0-tools \
+    gstreamer1.0-plugins-base \
+    gstreamer1.0-plugins-good \
+    gstreamer1.0-plugins-bad \
+    gstreamer1.0-rtsp \
+    && rm -rf /var/lib/apt/lists/*
+
 # Copy requirements and wheel file
 COPY docker/opencv-gpu/requirements.txt /tmp/requirements.txt
 COPY wheels/pupil_apriltags-1.0.4.post11-cp310-cp310-linux_aarch64.whl /tmp/
