@@ -55,6 +55,12 @@ stages:
             fetchDepth: 1
 
           - script: |
+              echo "Running Docker cleanup before build..."
+              ./scripts/cleanup.sh
+            displayName: 'Cleanup Docker Resources'
+            workingDirectory: $(Build.SourcesDirectory)
+
+          - script: |
               echo "Building Docker images..."
               ./scripts/build.sh
             displayName: 'Build Docker Images'

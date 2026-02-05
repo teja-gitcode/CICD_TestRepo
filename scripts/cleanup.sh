@@ -24,7 +24,9 @@ echo "Cleaning Docker build cache..."
 docker builder prune -af
 echo ""
 
-# Clean unused images
+# Clean unused images (but preserve images in use by running containers)
+# Note: This will NOT delete jetson-cuda-opencv:latest if it's in use
+# This preserves the base image layers for faster rebuilds
 echo "Cleaning unused Docker images..."
 docker image prune -a -f
 echo ""
