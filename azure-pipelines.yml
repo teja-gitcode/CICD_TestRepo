@@ -61,7 +61,8 @@ stages:
             workingDirectory: $(Build.SourcesDirectory)
 
           - script: |
-              docker images | grep jetson-cv
+              docker images | grep jetson-cuda-opencv || echo "No jetson-cuda-opencv images found"
+              docker images
             displayName: 'List Built Images'
 
   - stage: Test
