@@ -1,4 +1,36 @@
 services:
+  mediamtx: # Using this for Converting MTAP packets to RTSP stream without causing NAL 26/27 not supported issue with unify NVR.
+    container_name: mediamtx
+    image: bluenviron/mediamtx:latest
+    restart: unless-stopped
+    ports:
+      - "${MEDIAMTX_RTSP_PORT:-8554}:8554"      # RTSP port
+      - "${MEDIAMTX_RTMP_PORT:-1935}:1935"      # RTMP port (optional)
+      - "${MEDIAMTX_HLS_PORT:-8888}:8888"       # HLS port (optional)
+      - "${MEDIAMTX_WEBRTC_PORT:-8889}:8889"    # WebRTC HTTP port
+      - "${MEDIAMTX_WEBRTC_ICE_PORT:-8189}:8189/udp"  # WebRTC ICE/UDP port
+      - "${MEDIAMTX_API_PORT:-9997}:9997"       # API/Metrics port
+    volumes:
+      - ./mediamtx/mediamtx.yml:/mediamtx.yml:ro
+    networks:
+      - ${NETWORK_NAME:-cartloading-network}
+    environment:
+      - TZ=${TZ:-America/New_York}
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "50m"
+        max-file: "5"
+        compress: "true"
+    deploy:
+      resources:
+        limits:
+          memory: ${MEDIAMTX_MEMORY_LIMIT:-2G}
+          cpus: '${MEDIAMTX_CPU_LIMIT:-2}'
+        reservations:
+          memory: ${MEDIAMTX_MEMORY_RESERVATION:-1G}
+          cpus: '${MEDIAMTX_CPU_RESERVATION:-1}'
+
   nodered:
     container_name: nodered
     image: nodered/node-red:latest
@@ -39,6 +71,8 @@ services:
       dockerfile: docker/opencv-gpu/Dockerfile
     restart: unless-stopped
     runtime: nvidia
+    depends_on:
+      - mediamtx
     ports:
       - "${API_PORT:-5001}:5001"
       - "${STREAM_PORT:-5002}:5002"
