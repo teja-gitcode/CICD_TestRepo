@@ -16,4 +16,4 @@ services:
   nodered:
     environment:
       - NODE_ENV=production
-
+ 

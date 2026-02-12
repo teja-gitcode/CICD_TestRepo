@@ -18,9 +18,6 @@ if [ -f ../config/.env ]; then
 fi
 
 # Build OpenCV GPU image
-# Note: Docker will automatically reuse cached layers from the base image
-# When we tag the new build as 'jetson-cuda-opencv:latest', the old tag will be removed
-# but the layers will be preserved if they're still in use
 echo "Building OpenCV GPU image..."
 docker compose build opencv
 
